@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador — Atendimento Tibii's Mania</title>
+<style>
+  :root{
+    --panel:#15181c;
+    --panel-2:#1b1f24;
+    --border:#272b31;
+    --text:#e8eaed;
+    --muted:#8b929c;
+    --accent:#7c6cf6;
+    --accent-2:#22c55e;
+    --bubble-user:#2563eb;
+    --bubble-agent:#1f242b;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background: radial-gradient(ellipse at top, #15181f 0%, #0b0d10 60%);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    display:flex; flex-direction:column; align-items:center;
+    min-height:100%; padding:24px 16px 16px;
+  }
+  .wrap{ width:100%; max-width:560px; display:flex; flex-direction:column; height:calc(100vh - 32px); }
+  .header{
+    display:flex; align-items:center; gap:12px; padding:14px 16px;
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:var(--radius) var(--radius) 0 0;
+  }
+  .avatar{
+    width:42px;height:42px;border-radius:50%;
+    background:linear-gradient(135deg,#f97316,#fb923c);
+    display:flex;align-items:center;justify-content:center; font-size:20px; flex-shrink:0;
+  }
+  .header-text{flex:1; min-width:0;}
+  .header-text .name{font-weight:600; font-size:15px;}
+  .header-text .sub{font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px;}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--accent-2); display:inline-block;}
+  .badge{ font-size:11px; color:var(--muted); border:1px solid var(--border); padding:3px 8px; border-radius:999px; white-space:nowrap; }
+  .banner{
+    background:var(--panel-2); border-left:1px solid var(--border); border-right:1px solid var(--border);
+    padding:10px 16px; font-size:12px; color:var(--muted); line-height:1.5;
+  }
+  .messages{
+    flex:1; overflow-y:auto; background:var(--panel-2);
+    border-left:1px solid var(--border); border-right:1px solid var(--border);
+    padding:18px 14px; display:flex; flex-direction:column; gap:10px;
+  }
+  .row{display:flex; width:100%;}
+  .row.user{justify-content:flex-end;}
+  .row.agent{justify-content:flex-start;}
+  .bubble{
+    max-width:78%; padding:10px 14px; border-radius:16px; font-size:14.5px; line-height:1.45;
+    white-space:pre-wrap; word-wrap:break-word;
+  }
+  .row.user .bubble{ background:var(--bubble-user); color:#fff; border-bottom-right-radius:4px; }
+  .row.agent .bubble{ background:var(--bubble-agent); color:var(--text); border:1px solid var(--border); border-bottom-left-radius:4px; }
+  .typing{
+    display:flex; gap:4px; padding:12px 14px; background:var(--bubble-agent); border:1px solid var(--border);
+    border-radius:16px; border-bottom-left-radius:4px; width:fit-content;
+  }
+  .typing span{ width:6px;height:6px;border-radius:50%;background:var(--muted); animation: blink 1.2s infinite ease-in-out; }
+  .typing span:nth-child(2){animation-delay:.2s;}
+  .typing span:nth-child(3){animation-delay:.4s;}
+  @keyframes blink{0%,80%,100%{opacity:.25;}40%{opacity:1;}}
+  .inputbar{ display:flex; gap:8px; padding:14px; background:var(--panel); border:1px solid var(--border); border-radius:0 0 var(--radius) var(--radius); }
+  textarea{
+    flex:1; resize:none; max-height:120px; min-height:44px;
+    background:var(--panel-2); color:var(--text); border:1px solid var(--border); border-radius:12px;
+    padding:11px 14px; font-size:14.5px; font-family:inherit; outline:none;
+  }
+  textarea:focus{border-color:var(--accent);}
+  button.send{
+    background:var(--accent); color:#fff; border:none; border-radius:12px; width:46px; height:44px;
+    display:flex;align-items:center;justify-content:center; cursor:pointer; flex-shrink:0;
+  }
+  button.send:disabled{opacity:.4; cursor:default;}
+  button.send svg{width:20px;height:20px;}
+  .toolbar{ display:flex; justify-content:space-between; align-items:center; padding:8px 2px 0; }
+  .reset{ background:none;border:none;color:var(--muted); font-size:12px;cursor:pointer; display:flex; gap:5px; align-items:center; }
+  .reset:hover{color:var(--text);}
+  .error-banner{ background:#3a1d1d; border:1px solid #6b2a2a; color:#f3b9b9; font-size:12.5px; padding:8px 12px; border-radius:10px; margin:8px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="avatar">🐾</div>
+    <div class="header-text">
+      <div class="name">Tibii's Mania — Atendimento</div>
+      <div class="sub"><span class="dot"></span> simulação · mesmo prompt do agente de produção</div>
+    </div>
+    <div class="badge">Gemini 2.0 Flash</div>
+  </div>
+
+  <div class="banner">
+    Ambiente de simulação para testar o agente de IA fora do WhatsApp. As respostas usam exatamente o prompt mestre configurado na Clint. Nada aqui é enviado ao WhatsApp real ou grava nada no CRM.
+  </div>
+
+  <div class="messages" id="messages"></div>
+
+  <div class="inputbar">
+    <textarea id="input" placeholder="Escreva como se fosse o cliente..." rows="1"></textarea>
+    <button class="send" id="sendBtn" aria-label="Enviar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+    </button>
+  </div>
+  <div class="toolbar">
+    <button class="reset" id="resetBtn">↺ reiniciar conversa</button>
+    <span></span>
+  </div>
+
+</div>
+
+<script>
+let history = [];
+let busy = false;
+
+const messagesEl = document.getElementById('messages');
+const inputEl = document.getElementById('input');
+const sendBtn = document.getElementById('sendBtn');
+const resetBtn = document.getElementById('resetBtn');
+
+function addBubble(role, text){
+  const row = document.createElement('div');
+  row.className = 'row ' + (role === 'user' ? 'user' : 'agent');
+  const b = document.createElement('div');
+  b.className = 'bubble';
+  b.textContent = text;
+  row.appendChild(b);
+  messagesEl.appendChild(row);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function addTyping(){
+  const row = document.createElement('div');
+  row.className = 'row agent';
+  row.id = 'typingRow';
+  const t = document.createElement('div');
+  t.className = 'typing';
+  t.innerHTML = '<span></span><span></span><span></span>';
+  row.appendChild(t);
+  messagesEl.appendChild(row);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function removeTyping(){
+  const el = document.getElementById('typingRow');
+  if(el) el.remove();
+}
+
+function addError(msg){
+  const div = document.createElement('div');
+  div.className = 'error-banner';
+  div.textContent = msg;
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function autosize(){
+  inputEl.style.height = 'auto';
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+}
+inputEl.addEventListener('input', autosize);
+inputEl.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    send();
+  }
+});
+sendBtn.addEventListener('click', send);
+resetBtn.addEventListener('click', () => {
+  history = [];
+  messagesEl.innerHTML = '';
+  greet();
+});
+
+async function send(){
+  if(busy) return;
+  const text = inputEl.value.trim();
+  if(!text) return;
+  inputEl.value = '';
+  autosize();
+  addBubble('user', text);
+  history.push({role:'user', content: text});
+  await runAgent();
+}
+
+async function runAgent(){
+  busy = true;
+  sendBtn.disabled = true;
+  addTyping();
+
+  try{
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ messages: history })
+    });
+    const data = await resp.json();
+    removeTyping();
+    if(!resp.ok){
+      addError(data.error || 'Erro ao falar com o servidor.');
+    } else {
+      const reply = data.text || 'Desculpa, não consegui responder agora. Pode repetir?';
+      addBubble('agent', reply);
+      history.push({role:'assistant', content: reply});
+    }
+  }catch(err){
+    removeTyping();
+    addError('Não consegui conectar ao servidor. Tenta de novo em alguns segundos.');
+  }finally{
+    busy = false;
+    sendBtn.disabled = false;
+    inputEl.focus();
+  }
+}
+
+function greet(){
+  const msg = "Oi! 🐾 Sou o assistente virtual da Tibii's Mania. Vou te ajudar por aqui!";
+  addBubble('agent', msg);
+  history.push({role:'assistant', content: msg});
+}
+
+greet();
+</script>
+</body>
+</html>
