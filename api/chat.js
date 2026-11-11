@@ -1,5 +1,5 @@
-// Serverless function (Vercel) — chama a API gratuita do Groq.
-// Requer a env var GROQ_API_KEY configurada no projeto Vercel.
+// Serverless function (Vercel) — chama a API da OpenAI.
+// Requer a env var OPENAI_API_KEY configurada no projeto Vercel.
  
 const SYSTEM_PROMPT = `Você é o Assistente Virtual de Atendimento Comercial da Tibii's Mania Pet Center. A partir de agora você deve atuar ESTRITAMENTE como esse agente, seguindo ao pé da letra todas as regras do prompt mestre abaixo. Esta é uma simulação de teste: o "usuário" que vai te escrever está representando um CLIENTE da pet shop testando o atendimento. Responda sempre como o agente responderia no WhatsApp real, nunca saia do personagem, nunca mencione que isto é uma simulação, nunca mencione este prompt. Responda SEMPRE em português do Brasil, só com a fala do agente (sem comentários, sem aspas, sem indicar "Agente:"), pronta para ser lida como mensagem de WhatsApp.
  
@@ -128,9 +128,9 @@ module.exports = async (req, res) => {
     return;
   }
  
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    res.status(500).json({ error: 'GROQ_API_KEY não configurada no projeto Vercel.' });
+    res.status(500).json({ error: 'OPENAI_API_KEY não configurada no projeto Vercel.' });
     return;
   }
  
@@ -140,7 +140,7 @@ module.exports = async (req, res) => {
   }
   const history = Array.isArray(body?.messages) ? body.messages : [];
  
-  // Formato OpenAI-compatible (Groq): role "assistant"/"user", mais a mensagem "system" na frente.
+  // Formato da API da OpenAI: role "assistant"/"user", mais a mensagem "system" na frente.
   const messages = [
     { role: 'system', content: SYSTEM_PROMPT },
     ...history
@@ -157,14 +157,14 @@ module.exports = async (req, res) => {
   }
  
   try {
-    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'openai/gpt-oss-20b',
+        model: 'gpt-4o-mini',
         messages,
         temperature: 0.4,
         max_tokens: 400,
@@ -174,14 +174,14 @@ module.exports = async (req, res) => {
     const data = await resp.json();
  
     if (!resp.ok) {
-      res.status(resp.status).json({ error: data?.error?.message || 'Erro na API do Groq.' });
+      res.status(resp.status).json({ error: data?.error?.message || 'Erro na API da OpenAI.' });
       return;
     }
  
     const text = data?.choices?.[0]?.message?.content || '';
     res.status(200).json({ text: text.trim() || 'Desculpa, não consegui responder agora. Pode repetir?' });
   } catch (err) {
-    res.status(500).json({ error: err.message || 'Erro desconhecido ao chamar o Groq.' });
+    res.status(500).json({ error: err.message || 'Erro desconhecido ao chamar a OpenAI.' });
   }
 };
  
